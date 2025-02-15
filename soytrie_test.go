@@ -94,7 +94,6 @@ func TestInsertAndGet(t *testing.T) {
 
 func TestRemove(t *testing.T) {
 	root := soytrie.New[int, string]()
-
 	root.Insert("1,2,3", 1, 2, 3)
 	root.Insert("1,2,2", 1, 2, 2)
 	root.Insert("1,2,7", 1, 2, 7)
@@ -119,5 +118,233 @@ func TestRemove(t *testing.T) {
 	}
 	if expected, actual := 2, len(node13.Children); expected != actual {
 		t.Fatalf("unexpected length of children: expecting=%d, got %d", expected, actual)
+	}
+}
+
+func TestSearch(t *testing.T) {
+	dirRoot := soytrie.NewWithValue[string]("/")
+	dirRoot.Insert(
+		"source code",
+		"/src",
+	)
+	dirRoot.Insert(
+		"test data",
+		"/src", "/testdata",
+	)
+	dirRoot.Insert(
+		"test case for race condition #7",
+		"/src", "/testdata", "/race", "/7",
+	)
+	dirRoot.Insert(
+		"main go program",
+		"/src", "/cmd", "/main.go",
+	)
+	dirRoot.Insert(
+		"binary releases",
+		"/release",
+	)
+	dirRoot.Insert(
+		"binary release foo for amd64",
+		"/release", "/amd64", "/bin", "/foo",
+	)
+	dirRoot.Insert(
+		"binary release foo for aarch64",
+		"/release", "/aarch64", "/bin", "/foo",
+	)
+
+	dirSrc, ok := dirRoot.Get("/src")
+	if !ok || dirSrc == nil {
+		panic("nil /src node")
+	}
+	dirAmd64, ok := dirRoot.Get("/release", "/amd64")
+	if !ok || dirAmd64 == nil {
+		panic("nil /src node")
+	}
+
+	type testCase struct {
+		path     []string
+		mode     soytrie.Mode
+		expected bool
+	}
+
+	tests := map[*soytrie.Node[string, string]][]testCase{
+		dirRoot: {
+			{
+				path:     []string{"/src"},
+				mode:     soytrie.ModeExact,
+				expected: true,
+			},
+			{
+				path:     []string{"/src"},
+				mode:     soytrie.ModePrefix,
+				expected: true,
+			},
+			{
+				path:     []string{"/src", "/testdata", "/race"},
+				mode:     soytrie.ModeExact,
+				expected: false,
+			},
+			{
+				path:     []string{"/src", "/testdata", "/race"},
+				mode:     soytrie.ModePrefix,
+				expected: true,
+			},
+			{
+				path:     []string{"/release"},
+				mode:     soytrie.ModePrefix,
+				expected: true,
+			},
+			{
+				path:     []string{"/release", "/badpath"},
+				mode:     soytrie.ModeExact,
+				expected: false,
+			},
+			{
+				path:     []string{"/release", "/badpath"},
+				mode:     soytrie.ModePrefix,
+				expected: false,
+			},
+			{
+				path:     []string{"/release", "/amd64", "/bin"},
+				mode:     soytrie.ModeExact,
+				expected: false,
+			},
+			{
+				path:     []string{"/release", "/amd64", "/bin"},
+				mode:     soytrie.ModePrefix,
+				expected: true,
+			},
+			{
+				path:     []string{"/release", "/amd64", "/bin", "/foo"},
+				mode:     soytrie.ModeExact,
+				expected: true,
+			},
+			{
+				path:     []string{"/release", "/amd64", "/bin", "/foo"},
+				mode:     soytrie.ModePrefix,
+				expected: true,
+			},
+			{
+				path:     []string{"/release", "/badarch", "/bin", "/foo"},
+				mode:     soytrie.ModeExact,
+				expected: false,
+			},
+			{
+				path:     []string{"/release", "/badarch", "/bin", "/foo"},
+				mode:     soytrie.ModePrefix,
+				expected: false,
+			},
+			{
+				path:     []string{"/release", "/badarch", "/foo"},
+				mode:     soytrie.ModeExact,
+				expected: false,
+			},
+			{
+				path:     []string{"/release", "/badarch", "/foo"},
+				mode:     soytrie.ModePrefix,
+				expected: false,
+			},
+		},
+		dirAmd64: {
+			{
+				path:     []string{"/src"},
+				mode:     soytrie.ModeExact,
+				expected: false,
+			},
+			{
+				path:     []string{"/foo"},
+				mode:     soytrie.ModeExact,
+				expected: false,
+			},
+			{
+				path:     []string{"/foo"},
+				mode:     soytrie.ModePrefix,
+				expected: false,
+			},
+			{
+				path:     []string{"/bin"},
+				mode:     soytrie.ModeExact,
+				expected: false,
+			},
+			{
+				path:     []string{"/bin"},
+				mode:     soytrie.ModePrefix,
+				expected: true,
+			},
+			{
+				path:     []string{"/bin", "/foo"},
+				mode:     soytrie.ModePrefix,
+				expected: true,
+			},
+			{
+				path:     []string{"/bin", "/foo"},
+				mode:     soytrie.ModeExact,
+				expected: true,
+			},
+			{
+				path:     []string{"/bin", "/bar"},
+				mode:     soytrie.ModePrefix,
+				expected: false,
+			},
+			{
+				path:     []string{"/bin", "/bar"},
+				mode:     soytrie.ModeExact,
+				expected: false,
+			},
+		},
+		dirSrc: {
+			{
+				path:     []string{"/testdata"},
+				mode:     soytrie.ModeExact,
+				expected: true,
+			},
+			{
+				path:     []string{"/testdata"},
+				mode:     soytrie.ModePrefix,
+				expected: true,
+			},
+			{
+				path:     []string{"/testdata", "/race"},
+				mode:     soytrie.ModeExact,
+				expected: false,
+			},
+			{
+				path:     []string{"/testdata", "/race"},
+				mode:     soytrie.ModePrefix,
+				expected: true,
+			},
+			{
+				path:     []string{"/testdata", "/race", "/7"},
+				mode:     soytrie.ModeExact,
+				expected: true,
+			},
+			{
+				path:     []string{"/testdata", "/race", "/7"},
+				mode:     soytrie.ModePrefix,
+				expected: true,
+			},
+			{
+				path:     []string{"/testdata", "/race", "/no_such"},
+				mode:     soytrie.ModeExact,
+				expected: false,
+			},
+			{
+				path:     []string{"/testdata", "/race", "/no_such"},
+				mode:     soytrie.ModePrefix,
+				expected: false,
+			},
+		},
+	}
+
+	for root := range tests {
+		rootTests := tests[root]
+		for i := range rootTests {
+			tc := &rootTests[i]
+			actual := root.Search(tc.mode, tc.path...)
+			if actual != tc.expected {
+				t.Logf("root=%+v", root)
+				t.Fatalf("unexpected value %v for tests[%d] with path=%v,mode=%d,expected=%v", actual, i, tc.path, tc.mode, tc.expected)
+			}
+		}
 	}
 }

@@ -1,5 +1,12 @@
 package soytrie
 
+type Mode uint8
+
+const (
+	ModeExact = iota
+	ModePrefix
+)
+
 type Node[K comparable, V any] struct {
 	Value    V
 	Valued   bool
@@ -8,6 +15,10 @@ type Node[K comparable, V any] struct {
 
 func New[K comparable, V any]() *Node[K, V] {
 	return &Node[K, V]{}
+}
+
+func NewWithValue[K comparable, V any](v V) *Node[K, V] {
+	return &Node[K, V]{Value: v, Valued: true}
 }
 
 func Zero[T any]() T {
@@ -29,20 +40,40 @@ func (n *Node[K, V]) RemoveDirect(k K) (*Node[K, V], bool) {
 	return target, true
 }
 
+func (n *Node[K, V]) Get(path ...K) (*Node[K, V], bool) {
+	curr := n
+	for i := range path {
+		p := path[i]
+		next, ok := curr.GetDirect(p)
+		if !ok {
+			return nil, false
+		}
+		curr = next
+	}
+	return curr, true
+}
+
+func (n *Node[K, V]) Search(mode Mode, path ...K) bool {
+	target, ok := n.Get(path...)
+	if !ok {
+		return false
+	}
+	if mode == ModePrefix {
+		return true
+	}
+	return target.Valued
+}
+
 func (n *Node[K, V]) Remove(path ...K) (*Node[K, V], bool) {
 	l := len(path)
 	if l == 0 {
 		return nil, false
 	}
-	curr := n
-	for i := range path[:l-1] {
-		child, ok := curr.GetDirect(path[i])
-		if !ok {
-			return nil, false
-		}
-		curr = child
+	last, ok := n.Get(path[:l-1]...)
+	if !ok {
+		return nil, false
 	}
-	return curr.RemoveDirect(path[l-1])
+	return last.RemoveDirect(path[l-1])
 }
 
 func (n *Node[K, V]) GetOrInsertDirectValue(k K, v V) (*Node[K, V], bool) {
@@ -65,11 +96,9 @@ func (n *Node[K, V]) GetOrInsertDirect(k K, node *Node[K, V]) (*Node[K, V], bool
 	if ok {
 		return old, ok
 	}
-
 	if n.Children == nil {
 		n.Children = make(map[K]*Node[K, V])
 	}
-
 	n.Children[k] = node
 	return node, false
 }
@@ -84,17 +113,4 @@ func (n *Node[K, V]) Insert(v V, p0 K, pRest ...K) *Node[K, V] {
 	}
 	curr.Value, curr.Valued = v, true
 	return curr
-}
-
-func (n *Node[K, V]) Get(path ...K) (*Node[K, V], bool) {
-	curr := n
-	for i := range path {
-		p := path[i]
-		next, ok := curr.GetDirect(p)
-		if !ok {
-			return nil, false
-		}
-		curr = next
-	}
-	return curr, true
 }
