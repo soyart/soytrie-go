@@ -64,6 +64,63 @@ func (n *Node[K, V]) Search(mode Mode, path ...K) bool {
 	return target.Valued
 }
 
+func (n *Node[K, V]) Predict(mode Mode, path ...K) ([]*Node[K, V], bool) {
+	target, ok := n.Get(path...)
+	if !ok {
+		return nil, false
+	}
+
+	collector := []*Node[K, V]{}
+	switch mode {
+	case ModeExact:
+		CollectChildrenValued(target, &collector)
+
+	case ModePrefix:
+		CollectChildren(target, &collector)
+	}
+
+	return collector, true
+}
+
+// Collect collects all values under node to collector
+func Collect[K comparable, V any](
+	testFn func(*Node[K, V]) bool,
+	node *Node[K, V],
+	collector *[]*Node[K, V],
+) {
+	if testFn == nil || testFn(node) {
+		*collector = append(*collector, node)
+	}
+	for _, child := range node.Children {
+		Collect(testFn, child, collector)
+	}
+}
+
+func CollectChildren[K comparable, V any](
+	node *Node[K, V],
+	collector *[]*Node[K, V],
+) {
+	Collect(nil, node, collector)
+}
+
+func CollectChildrenValued[K comparable, V any](
+	node *Node[K, V],
+	collector *[]*Node[K, V],
+) {
+	Collect(func(n *Node[K, V]) bool {
+		return n.Valued
+	}, node, collector)
+}
+
+func CollectChildrenLeaf[K comparable, V any](
+	node *Node[K, V],
+	collector *[]*Node[K, V],
+) {
+	Collect(func(n *Node[K, V]) bool {
+		return len(n.Children) == 0
+	}, node, collector)
+}
+
 func (n *Node[K, V]) Remove(path ...K) (*Node[K, V], bool) {
 	l := len(path)
 	if l == 0 {

@@ -348,3 +348,103 @@ func TestSearch(t *testing.T) {
 		}
 	}
 }
+
+func TestCollectChildren(t *testing.T) {
+	root := soytrie.New[int, string]()
+	root.Insert("1", 1)
+	root.Insert("1,2", 1, 2)
+	root.Insert("1,2,3", 1, 2, 3)
+	root.Insert("2", 2)
+	root.Insert("2,3", 2, 3)
+	root.Insert("10,20,30,40,50", 10, 20, 30, 40, 50)
+
+	t.Run("CollectChildren", func(t *testing.T) {
+		collector := []*soytrie.Node[int, string]{}
+		soytrie.CollectChildren(root, &collector)
+		if l := len(collector); l != 11 { // 10 nodes plus root
+			t.Fatalf("unexpected length of collected result %d", l)
+		}
+	})
+	t.Run("CollectChildrenValued", func(t *testing.T) {
+		collector := []*soytrie.Node[int, string]{}
+		soytrie.CollectChildrenValued(root, &collector)
+		if l := len(collector); l != 6 { // 6 nodes (root is not valued)
+			t.Fatalf("unexpected length of collected result %d", l)
+		}
+
+	})
+	t.Run("CollectChildrenLeaf", func(t *testing.T) {
+		collector := []*soytrie.Node[int, string]{}
+		soytrie.CollectChildrenLeaf(root, &collector)
+		if l := len(collector); l != 3 {
+			t.Fatalf("unexpected length of collected result %d", l)
+		}
+	})
+}
+
+func TestPredict(t *testing.T) {
+	root := soytrie.New[int, string]()
+	root.Insert("1", 1)
+	root.Insert("1,2", 1, 2)
+	root.Insert("1,2,3", 1, 2, 3)
+	root.Insert("2", 2)
+	root.Insert("2,3", 2, 3)
+	root.Insert("10,20,30,40,50", 10, 20, 30, 40, 50)
+
+	type testCase struct {
+		path        []int
+		mode        soytrie.Mode
+		expectedOk  bool
+		expectedLen int // len
+	}
+
+	tests := []testCase{
+		{
+			path:        []int{1},
+			mode:        soytrie.ModePrefix,
+			expectedOk:  true,
+			expectedLen: 3,
+		},
+		{
+			path:        []int{1},
+			mode:        soytrie.ModeExact,
+			expectedOk:  true,
+			expectedLen: 3,
+		},
+		{
+			path:        []int{1, 2},
+			mode:        soytrie.ModePrefix,
+			expectedOk:  true,
+			expectedLen: 2,
+		},
+		{
+			path:        []int{1, 2},
+			mode:        soytrie.ModeExact,
+			expectedOk:  true,
+			expectedLen: 2,
+		},
+		{
+			path:        []int{10, 20},
+			mode:        soytrie.ModeExact,
+			expectedOk:  true,
+			expectedLen: 1,
+		},
+		{
+			path:        []int{10, 20},
+			mode:        soytrie.ModePrefix,
+			expectedOk:  true,
+			expectedLen: 4,
+		},
+	}
+
+	for i := range tests {
+		tc := &tests[i]
+		actual, ok := root.Predict(tc.mode, tc.path...)
+		if ok != tc.expectedOk {
+			t.Fatalf("[case %d] unexpected ok, expecting=%v, actual=%v", i, tc.expectedOk, actual)
+		}
+		if len(actual) != tc.expectedLen {
+			t.Fatalf("[case %d] unexpected value %d, expecting %d", i, len(actual), tc.expectedLen)
+		}
+	}
+}
