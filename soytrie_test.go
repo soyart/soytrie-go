@@ -7,14 +7,6 @@ import (
 	"github.com/soyart/soytrie-go"
 )
 
-func pront[K comparable, V any](n *soytrie.Node[K, V]) {
-	curr := n
-	for p, c := range curr.Children {
-		fmt.Println("p", p, "child", c.Value)
-		pront(c)
-	}
-}
-
 func TestInsertAndGet(t *testing.T) {
 	root := soytrie.New[int, string]()
 
@@ -89,6 +81,80 @@ func TestInsertAndGet(t *testing.T) {
 	}
 	if node12345.Value != newV12345 {
 		t.Fatalf("unexpected value '%s', expecting '%s'", node12345.Value, newV12345)
+	}
+}
+
+func TestInsertStrict(t *testing.T) {
+	root := soytrie.New[int, string]()
+	var err error
+	_, err = root.InsertStrict("1", 1)
+	if err != nil {
+		t.Fatal("unexpected error", err)
+	}
+	_, err = root.InsertStrict("2", 2)
+	if err != nil {
+		t.Fatal("unexpected error", err)
+	}
+	_, err = root.InsertStrict("1", 1)
+	if err == nil {
+		t.Fatal("unexpected nil error")
+	}
+	_, err = root.InsertStrict("1,2", 1, 2)
+	if err != nil {
+		t.Fatal("unexpected error", err)
+	}
+	_, err = root.InsertStrict("1,2,3", 1, 2, 3)
+	if err != nil {
+		t.Fatal("unexpected error", err)
+	}
+	_, err = root.InsertStrict("new_value_1,2,3", 1, 2, 3)
+	if err == nil {
+		t.Fatal("unexpected nil error")
+	}
+	_, err = root.InsertStrict("1,2,3,4", 1, 2, 3, 4)
+	if err != nil {
+		t.Fatal("unexpected error", err)
+	}
+}
+
+func TestInsertNoOverwrite(t *testing.T) {
+	root := soytrie.New[int, string]()
+	var err error
+	_, err = root.InsertNoOverwrite("1", 1)
+	if err != nil {
+		t.Fatal("unexpected error", err)
+	}
+	_, err = root.InsertNoOverwrite("2", 2)
+	if err != nil {
+		t.Fatal("unexpected error", err)
+	}
+	_, err = root.InsertNoOverwrite("1", 1)
+	if err == nil {
+		t.Fatal("unexpected nil error")
+	}
+	_, err = root.InsertNoOverwrite("1,2", 1, 2)
+	if err != nil {
+		t.Fatal("unexpected error", err)
+	}
+	_, err = root.InsertNoOverwrite("1,2,3,4,5", 1, 2, 3, 4, 5)
+	if err != nil {
+		t.Fatal("unexpected error", err)
+	}
+	_, err = root.InsertNoOverwrite("1,2,3", 1, 2, 3)
+	if err != nil {
+		t.Fatal("unexpected error", err)
+	}
+	_, err = root.InsertNoOverwrite("new_value_1,2,3", 1, 2, 3)
+	if err == nil {
+		t.Fatal("unexpected error", err)
+	}
+	_, err = root.InsertNoOverwrite("1,2,3,4", 1, 2, 3, 4)
+	if err != nil {
+		t.Fatal("unexpected error", err)
+	}
+	_, err = root.InsertNoOverwrite("10,20,30", 10, 20, 30)
+	if err != nil {
+		t.Fatal("unexpected error", err)
 	}
 }
 
@@ -384,12 +450,12 @@ func TestCollectChildren(t *testing.T) {
 
 func TestPredict(t *testing.T) {
 	root := soytrie.New[int, string]()
-	root.Insert("1", 1)
-	root.Insert("1,2", 1, 2)
-	root.Insert("1,2,3", 1, 2, 3)
-	root.Insert("2", 2)
-	root.Insert("2,3", 2, 3)
-	root.Insert("10,20,30,40,50", 10, 20, 30, 40, 50)
+	_, _ = root.InsertNoOverwrite("1", 1)
+	_, _ = root.InsertNoOverwrite("1,2", 1, 2)
+	_, _ = root.InsertNoOverwrite("1,2,3", 1, 2, 3)
+	_, _ = root.InsertNoOverwrite("2", 2)
+	_, _ = root.InsertNoOverwrite("2,3", 2, 3)
+	_, _ = root.InsertNoOverwrite("10,20,30,40,50", 10, 20, 30, 40, 50)
 
 	type testCase struct {
 		path        []int
@@ -424,6 +490,54 @@ func TestPredict(t *testing.T) {
 			expectedLen: 2,
 		},
 		{
+			path:        []int{2},
+			mode:        soytrie.ModeExact,
+			expectedOk:  true,
+			expectedLen: 2,
+		},
+		{
+			path:        []int{2},
+			mode:        soytrie.ModePrefix,
+			expectedOk:  true,
+			expectedLen: 2,
+		},
+		{
+			path:        []int{2, 3},
+			mode:        soytrie.ModeExact,
+			expectedOk:  true,
+			expectedLen: 1,
+		},
+		{
+			path:        []int{2, 3},
+			mode:        soytrie.ModePrefix,
+			expectedOk:  true,
+			expectedLen: 1,
+		},
+		{
+			path:        []int{2, 3, 4},
+			mode:        soytrie.ModeExact,
+			expectedOk:  false,
+			expectedLen: 0,
+		},
+		{
+			path:        []int{2, 3, 4},
+			mode:        soytrie.ModePrefix,
+			expectedOk:  false,
+			expectedLen: 0,
+		},
+		{
+			path:        []int{2, 5},
+			mode:        soytrie.ModeExact,
+			expectedOk:  false,
+			expectedLen: 0,
+		},
+		{
+			path:        []int{2, 5},
+			mode:        soytrie.ModePrefix,
+			expectedOk:  false,
+			expectedLen: 0,
+		},
+		{
 			path:        []int{10, 20},
 			mode:        soytrie.ModeExact,
 			expectedOk:  true,
@@ -446,5 +560,13 @@ func TestPredict(t *testing.T) {
 		if len(actual) != tc.expectedLen {
 			t.Fatalf("[case %d] unexpected value %d, expecting %d", i, len(actual), tc.expectedLen)
 		}
+	}
+}
+
+func pront[K comparable, V any](n *soytrie.Node[K, V]) {
+	curr := n
+	for p, c := range curr.Children {
+		fmt.Println("p", p, "child", c.Value)
+		pront(c)
 	}
 }

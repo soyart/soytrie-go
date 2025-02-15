@@ -1,5 +1,10 @@
 package soytrie
 
+import (
+	"errors"
+	"fmt"
+)
+
 type Mode uint8
 
 const (
@@ -26,9 +31,14 @@ func Zero[T any]() T {
 	return zero
 }
 
+func (n *Node[K, V]) HasDirect(k K) bool {
+	_, ok := n.Children[k]
+	return ok
+}
+
 func (n *Node[K, V]) GetDirect(k K) (*Node[K, V], bool) {
-	n, ok := n.Children[k]
-	return n, ok
+	child, ok := n.Children[k]
+	return child, ok
 }
 
 func (n *Node[K, V]) RemoveDirect(k K) (*Node[K, V], bool) {
@@ -168,6 +178,34 @@ func (n *Node[K, V]) Insert(v V, p0 K, pRest ...K) *Node[K, V] {
 		next, _ := curr.GetOrInsertDirect(p, New[K, V]())
 		curr = next
 	}
-	curr.Value, curr.Valued = v, true
+	curr.Valued, curr.Value = true, v
 	return curr
+}
+
+func (n *Node[K, V]) InsertStrict(v V, p0 K, pRest ...K) (*Node[K, V], error) {
+	path := append([]K{p0}, pRest...)
+	last := len(path) - 1
+
+	parent, ok := n.Get(path[:last]...)
+	if !ok {
+		return nil, errors.New("missing some path")
+	}
+	if parent.HasDirect(path[last]) {
+		return nil, fmt.Errorf("node already had path %v", path[last])
+	}
+	return parent.Insert(v, path[last]), nil
+}
+
+func (n *Node[K, V]) InsertNoOverwrite(v V, p0 K, pRest ...K) (*Node[K, V], error) {
+	path := append([]K{p0}, pRest...)
+	curr := n
+	for i := range path {
+		next, _ := curr.GetOrInsertDirect(path[i], New[K, V]())
+		curr = next
+	}
+	if curr.Valued {
+		return nil, fmt.Errorf("valued node exists: %v", curr.Value)
+	}
+	curr.Valued, curr.Value = true, v
+	return curr, nil
 }
