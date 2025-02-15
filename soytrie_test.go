@@ -159,32 +159,83 @@ func TestInsertNoOverwrite(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	root := soytrie.New[int, string]()
-	root.Insert("1,2,3", 1, 2, 3)
-	root.Insert("1,2,2", 1, 2, 2)
-	root.Insert("1,2,7", 1, 2, 7)
-	root.Insert("1,3,7", 1, 3, 7)
-	root.Insert("1,3,8", 1, 3, 8)
-	root.Insert("1,10,20", 1, 10, 20)
-	root.Insert("0,2,3", 0, 2, 3)
+	t.Run("remove", func(t *testing.T) {
+		root := soytrie.New[int, string]()
+		root.Insert("1,2,3", 1, 2, 3)
+		root.Insert("1,2,2", 1, 2, 2)
+		root.Insert("1,2,7", 1, 2, 7)
+		root.Insert("1,3,7", 1, 3, 7)
+		root.Insert("1,3,8", 1, 3, 8)
+		root.Insert("1,10,20", 1, 10, 20)
+		root.Insert("0,2,3", 0, 2, 3)
 
-	root.Remove(1, 2)
-	if expected, actual := 2, len(root.Children); expected != actual {
-		t.Fatalf("unexpected length of children: expecting=%d, got %d", expected, actual)
-	}
+		root.Remove(1, 2)
+		if expected, actual := 2, len(root.Children); expected != actual {
+			t.Fatalf("unexpected length of children: expecting=%d, got %d", expected, actual)
+		}
 
-	root.Remove(0)
-	if expected, actual := 1, len(root.Children); expected != actual {
-		t.Fatalf("unexpected length of children: expecting=%d, got %d", expected, actual)
-	}
+		root.Remove(0)
+		if expected, actual := 1, len(root.Children); expected != actual {
+			t.Fatalf("unexpected length of children: expecting=%d, got %d", expected, actual)
+		}
 
-	node13, ok := root.Get(1, 3)
-	if !ok {
-		t.Fatal("unexpected false")
-	}
-	if expected, actual := 2, len(node13.Children); expected != actual {
-		t.Fatalf("unexpected length of children: expecting=%d, got %d", expected, actual)
-	}
+		node13, ok := root.Get(1, 3)
+		if !ok {
+			t.Fatal("unexpected false")
+		}
+		if expected, actual := 2, len(node13.Children); expected != actual {
+			t.Fatalf("unexpected length of children: expecting=%d, got %d", expected, actual)
+		}
+	})
+
+	t.Run("remove and predict", func(t *testing.T) {
+		root := soytrie.New[int, string]()
+		root.Insert("1,2,3", 1, 2, 3)
+		root.Insert("1,2,2", 1, 2, 2)
+		root.Insert("1,2,7", 1, 2, 7)
+		root.Insert("1,3,7", 1, 3, 7)
+		root.Insert("1,3,8", 1, 3, 8)
+		root.Insert("1,10,20", 1, 10, 20)
+		root.Insert("0,2,10,20,30", 0, 2, 10, 20, 30)
+		root.Insert("0,2,100,200,300", 0, 2, 100, 200, 300)
+		root.Insert("0,2,10,15", 0, 2, 10, 15)
+		root.Insert("0,2,10,15,16", 0, 2, 10, 15, 16)
+		root.Insert("0,2,10,15,17", 0, 2, 10, 15, 17)
+
+		collector, ok := root.Predict(soytrie.ModePrefix, 0) // [0] [0,2] [0,2,10] [0,2,100] [0,2,10,20] [0,2,10,20,30] [...200] [...300] [... 15] [...16] [...17]
+		if !ok {
+			panic("unexpected Predict behavior")
+		}
+		if len(collector) != 11 {
+			panic(fmt.Sprintf("unexpected Predict behavior, got len=%d", len(collector)))
+		}
+
+		root.Remove(0, 2, 100, 200)
+		collector, ok = root.Predict(soytrie.ModePrefix, 0) // [0,2] [0,2,10] [0,2,100] [0,2,10,20] [0,2,10,20,30] [...200] [...300] [... 15] [...16] [...17]
+		if !ok {
+			panic("unexpected Predict behavior")
+		}
+		if len(collector) != 9 {
+			panic(fmt.Sprintf("unexpected Predict behavior, got len=%d", len(collector)))
+		}
+
+		root.Remove(0, 2, 10, 15)
+		collector, ok = root.Predict(soytrie.ModePrefix, 0) // [0,2] [0,2,10] [0,2,100] [0,2,10,20] [0,2,10,20,30] [...200] [...300]
+		if !ok {
+			panic("unexpected Predict behavior")
+		}
+		if len(collector) != 6 {
+			panic(fmt.Sprintf("unexpected Predict behavior, got len=%d", len(collector)))
+		}
+
+		collector, ok = root.Predict(soytrie.ModePrefix) // prev 6 + 10 + root = 17
+		if !ok {
+			panic("unexpected Predict behavior")
+		}
+		if len(collector) != 17 {
+			panic(fmt.Sprintf("unexpected Predict behavior, got len=%d", len(collector)))
+		}
+	})
 }
 
 func TestSearch(t *testing.T) {
