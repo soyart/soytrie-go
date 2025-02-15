@@ -161,13 +161,13 @@ func TestInsertNoOverwrite(t *testing.T) {
 func TestRemove(t *testing.T) {
 	t.Run("remove", func(t *testing.T) {
 		root := soytrie.New[int, string]()
-		root.Insert("1,2,3", 1, 2, 3)
-		root.Insert("1,2,2", 1, 2, 2)
-		root.Insert("1,2,7", 1, 2, 7)
-		root.Insert("1,3,7", 1, 3, 7)
-		root.Insert("1,3,8", 1, 3, 8)
-		root.Insert("1,10,20", 1, 10, 20)
-		root.Insert("0,2,3", 0, 2, 3)
+		_ = root.Insert("1,2,3", 1, 2, 3)
+		_ = root.Insert("1,2,2", 1, 2, 2)
+		_ = root.Insert("1,2,7", 1, 2, 7)
+		_ = root.Insert("1,3,7", 1, 3, 7)
+		_ = root.Insert("1,3,8", 1, 3, 8)
+		_ = root.Insert("1,10,20", 1, 10, 20)
+		_ = root.Insert("0,2,3", 0, 2, 3)
 
 		root.Remove(1, 2)
 		if expected, actual := 2, len(root.Children); expected != actual {
@@ -190,17 +190,17 @@ func TestRemove(t *testing.T) {
 
 	t.Run("remove and predict", func(t *testing.T) {
 		root := soytrie.New[int, string]()
-		root.Insert("1,2,3", 1, 2, 3)
-		root.Insert("1,2,2", 1, 2, 2)
-		root.Insert("1,2,7", 1, 2, 7)
-		root.Insert("1,3,7", 1, 3, 7)
-		root.Insert("1,3,8", 1, 3, 8)
-		root.Insert("1,10,20", 1, 10, 20)
-		root.Insert("0,2,10,20,30", 0, 2, 10, 20, 30)
-		root.Insert("0,2,100,200,300", 0, 2, 100, 200, 300)
-		root.Insert("0,2,10,15", 0, 2, 10, 15)
-		root.Insert("0,2,10,15,16", 0, 2, 10, 15, 16)
-		root.Insert("0,2,10,15,17", 0, 2, 10, 15, 17)
+		_ = root.Insert("1,2,3", 1, 2, 3)
+		_ = root.Insert("1,2,2", 1, 2, 2)
+		_ = root.Insert("1,2,7", 1, 2, 7)
+		_ = root.Insert("1,3,7", 1, 3, 7)
+		_ = root.Insert("1,3,8", 1, 3, 8)
+		_ = root.Insert("1,10,20", 1, 10, 20)
+		_ = root.Insert("0,2,10,20,30", 0, 2, 10, 20, 30)
+		_ = root.Insert("0,2,100,200,300", 0, 2, 100, 200, 300)
+		_ = root.Insert("0,2,10,15", 0, 2, 10, 15)
+		_ = root.Insert("0,2,10,15,16", 0, 2, 10, 15, 16)
+		_ = root.Insert("0,2,10,15,17", 0, 2, 10, 15, 17)
 
 		collector, ok := root.Predict(soytrie.ModePrefix, 0) // [0] [0,2] [0,2,10] [0,2,100] [0,2,10,20] [0,2,10,20,30] [...200] [...300] [... 15] [...16] [...17]
 		if !ok {
@@ -228,7 +228,7 @@ func TestRemove(t *testing.T) {
 			panic(fmt.Sprintf("unexpected Predict behavior, got len=%d", len(collector)))
 		}
 
-		collector, ok = root.Predict(soytrie.ModePrefix) // prev 6 + 10 + root = 17
+		collector, ok = root.Predict(soytrie.ModePrefix) // prev 6 + 10 (from p0=1) + root = 17
 		if !ok {
 			panic("unexpected Predict behavior")
 		}
@@ -240,31 +240,31 @@ func TestRemove(t *testing.T) {
 
 func TestSearch(t *testing.T) {
 	dirRoot := soytrie.NewWithValue[string]("/")
-	dirRoot.Insert(
+	_ = dirRoot.Insert(
 		"source code",
 		"/src",
 	)
-	dirRoot.Insert(
+	_ = dirRoot.Insert(
 		"test data",
 		"/src", "/testdata",
 	)
-	dirRoot.Insert(
+	_ = dirRoot.Insert(
 		"test case for race condition #7",
 		"/src", "/testdata", "/race", "/7",
 	)
-	dirRoot.Insert(
+	_ = dirRoot.Insert(
 		"main go program",
 		"/src", "/cmd", "/main.go",
 	)
-	dirRoot.Insert(
+	_ = dirRoot.Insert(
 		"binary releases",
 		"/release",
 	)
-	dirRoot.Insert(
+	_ = dirRoot.Insert(
 		"binary release foo for amd64",
 		"/release", "/amd64", "/bin", "/foo",
 	)
-	dirRoot.Insert(
+	_ = dirRoot.Insert(
 		"binary release foo for aarch64",
 		"/release", "/aarch64", "/bin", "/foo",
 	)
@@ -468,12 +468,12 @@ func TestSearch(t *testing.T) {
 
 func TestCollectChildren(t *testing.T) {
 	root := soytrie.New[int, string]()
-	root.Insert("1", 1)
-	root.Insert("1,2", 1, 2)
-	root.Insert("1,2,3", 1, 2, 3)
-	root.Insert("2", 2)
-	root.Insert("2,3", 2, 3)
-	root.Insert("10,20,30,40,50", 10, 20, 30, 40, 50)
+	_ = root.Insert("1", 1)
+	_ = root.Insert("1,2", 1, 2)
+	_ = root.Insert("1,2,3", 1, 2, 3)
+	_ = root.Insert("2", 2)
+	_ = root.Insert("2,3", 2, 3)
+	_ = root.Insert("10,20,30,40,50", 10, 20, 30, 40, 50)
 
 	t.Run("CollectChildren", func(t *testing.T) {
 		collector := []*soytrie.Node[int, string]{}
@@ -616,13 +616,13 @@ func TestPredict(t *testing.T) {
 
 func TestUnique(t *testing.T) {
 	root := soytrie.New[int, string]()
-	root.Insert("1,2,3", 1, 2, 3)
-	root.Insert("1,2,2", 1, 2, 2)
-	root.Insert("1,2,7", 1, 2, 7)
-	root.Insert("1,3,7", 1, 3, 7)
-	root.Insert("1,3,8", 1, 3, 8)
-	root.Insert("1,10,20", 1, 10, 20)
-	root.Insert("0,2,3", 0, 2, 3)
+	_ = root.Insert("1,2,3", 1, 2, 3)
+	_ = root.Insert("1,2,2", 1, 2, 2)
+	_ = root.Insert("1,2,7", 1, 2, 7)
+	_ = root.Insert("1,3,7", 1, 3, 7)
+	_ = root.Insert("1,3,8", 1, 3, 8)
+	_ = root.Insert("1,10,20", 1, 10, 20)
+	_ = root.Insert("0,2,3", 0, 2, 3)
 
 	type testCase struct {
 		path     []int
