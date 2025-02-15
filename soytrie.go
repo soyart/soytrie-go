@@ -131,6 +131,16 @@ func CollectChildrenLeaf[K comparable, V any](
 	}, node, collector)
 }
 
+// Unique returns whether the path is a unique path
+// or a prefix to a valued node.
+func (n *Node[K, V]) Unique(path ...K) bool {
+	collected, ok := n.Predict(ModeExact, path...)
+	if !ok {
+		return false
+	}
+	return len(collected) == 1
+}
+
 func (n *Node[K, V]) Remove(path ...K) (*Node[K, V], bool) {
 	l := len(path)
 	if l == 0 {
@@ -182,6 +192,8 @@ func (n *Node[K, V]) Insert(v V, p0 K, pRest ...K) *Node[K, V] {
 	return curr
 }
 
+// InsertStrict inserts v to p0+pRest if and only if
+// the insertion would create a new node
 func (n *Node[K, V]) InsertStrict(v V, p0 K, pRest ...K) (*Node[K, V], error) {
 	path := append([]K{p0}, pRest...)
 	last := len(path) - 1
@@ -196,6 +208,8 @@ func (n *Node[K, V]) InsertStrict(v V, p0 K, pRest ...K) (*Node[K, V], error) {
 	return parent.Insert(v, path[last]), nil
 }
 
+// InsertNoOverwrite inserts v to p0+pRest only if
+// the insertion to p0+pRest does not overwrite existing value
 func (n *Node[K, V]) InsertNoOverwrite(v V, p0 K, pRest ...K) (*Node[K, V], error) {
 	path := append([]K{p0}, pRest...)
 	curr := n

@@ -563,6 +563,73 @@ func TestPredict(t *testing.T) {
 	}
 }
 
+func TestUnique(t *testing.T) {
+	root := soytrie.New[int, string]()
+	root.Insert("1,2,3", 1, 2, 3)
+	root.Insert("1,2,2", 1, 2, 2)
+	root.Insert("1,2,7", 1, 2, 7)
+	root.Insert("1,3,7", 1, 3, 7)
+	root.Insert("1,3,8", 1, 3, 8)
+	root.Insert("1,10,20", 1, 10, 20)
+	root.Insert("0,2,3", 0, 2, 3)
+
+	type testCase struct {
+		path     []int
+		expected bool
+	}
+
+	tests := []testCase{
+		{
+			path:     []int{1},
+			expected: false,
+		},
+		{
+			path:     []int{1, 2},
+			expected: false,
+		},
+		{
+			path:     []int{1, 2, 7},
+			expected: true,
+		},
+		{
+			path:     []int{1, 2, 7, 8},
+			expected: false,
+		},
+		{
+			path:     []int{1, 10},
+			expected: true,
+		},
+		{
+			path:     []int{1, 10, 20},
+			expected: true,
+		},
+		{
+			path:     []int{0},
+			expected: true,
+		},
+		{
+			path:     []int{0, 2},
+			expected: true,
+		},
+		{
+			path:     []int{0, 2, 3},
+			expected: true,
+		},
+		{
+			path:     []int{0, 2, 1, 3},
+			expected: false,
+		},
+	}
+
+	for i := range tests {
+		tc := &tests[i]
+		actual := root.Unique(tc.path...)
+		if actual != tc.expected {
+			t.Fatalf("[case %d] unexpected value %v, expecting %v with path=%v", i, actual, tc.expected, tc.path)
+		}
+	}
+}
+
 func pront[K comparable, V any](n *soytrie.Node[K, V]) {
 	curr := n
 	for p, c := range curr.Children {
