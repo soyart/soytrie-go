@@ -497,6 +497,15 @@ func TestCollectChildren(t *testing.T) {
 			t.Fatalf("unexpected length of collected result %d", l)
 		}
 	})
+	t.Run("Collect with nil collector should crash", func(t *testing.T) {
+		defer func() {
+			err := recover()
+			if err == nil {
+				t.Fatalf("unexpected nil error (should have panicked)")
+			}
+		}()
+		soytrie.Collect(nil, root, nil)
+	})
 }
 
 func TestPredict(t *testing.T) {
