@@ -26,11 +26,6 @@ func NewWithValue[K comparable, V any](v V) *Node[K, V] {
 	return &Node[K, V]{Value: v, Valued: true}
 }
 
-func Zero[T any]() T {
-	var zero T
-	return zero
-}
-
 func (n *Node[K, V]) HasDirect(k K) bool {
 	_, ok := n.Children[k]
 	return ok
